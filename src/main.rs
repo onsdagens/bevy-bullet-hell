@@ -1,7 +1,10 @@
 use avian2d::{math::*, prelude::*};
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::WindowResolution};
 use bevy_bullet_hell::{
-    block, camera, common::*, config, gamepad, keyboard, mouse, overlay, player, shooting, tile, ui,
+    block, camera,
+    common::*,
+    config::{self, ConfigResource},
+    gamepad, keyboard, mouse, overlay, player, shooting, tile, ui,
 };
 use bevy_ecs_tilemap::prelude::*;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
@@ -52,9 +55,18 @@ fn main() {
         .add_systems(
             Update,
             (
-                keyboard::update_system,
-                mouse::update_system,
-                gamepad::update_system,
+                keyboard::update_system.run_if(resource_equals::<ConfigResource>(ConfigResource {
+                    gamepad: false,
+                })),
+                // there is 100% a better way of doing this, probably split configresource
+                // into more specific resources and bundle it?
+                mouse::update_system.run_if(resource_equals::<ConfigResource>(ConfigResource {
+                    gamepad: false,
+                })),
+                mouse::reset_vector.run_if(resource_changed::<ConfigResource>),
+                gamepad::update_system.run_if(resource_equals::<ConfigResource>(ConfigResource {
+                    gamepad: true,
+                })),
                 player::update_system,
                 player::collider_system,
                 block::update_system,

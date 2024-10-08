@@ -1,11 +1,14 @@
 use bevy::prelude::*;
 
-use crate::player::DeltaResource;
+use crate::{config::ConfigResource, player::DeltaResource};
 
-pub fn update_system(keys: Res<ButtonInput<KeyCode>>, mut target_resource: ResMut<DeltaResource>) {
+pub fn update_system(
+    keys: Res<ButtonInput<KeyCode>>,
+    config_resource: Res<ConfigResource>,
+    mut target_resource: ResMut<DeltaResource>,
+) {
     let mut total_x = 0.0;
     let mut total_y = 0.0;
-
     // Key Mapping ?
     if keys.pressed(KeyCode::KeyW) {
         total_y += 1.0

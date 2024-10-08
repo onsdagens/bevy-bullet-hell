@@ -1,9 +1,6 @@
 use bevy::prelude::*;
 
-#[derive(Component)]
-pub struct ConfigComponent;
-
-#[derive(Resource, Reflect)]
+#[derive(Resource, Reflect, PartialEq)]
 pub struct ConfigResource {
     pub gamepad: bool,
 }

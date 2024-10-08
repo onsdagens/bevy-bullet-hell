@@ -33,3 +33,7 @@ pub fn update_system(
         }
     }
 }
+
+pub fn reset_vector(mut target_resource: ResMut<DeltaResource>) {
+    target_resource.aim_delta = (0.0, 0.0).into();
+}
