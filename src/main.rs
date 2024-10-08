@@ -1,6 +1,8 @@
 use avian2d::{math::*, prelude::*};
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::WindowResolution};
-use bevy_bullet_hell::{block, camera, common::*, gamepad, overlay, player, shooting, tile, ui};
+use bevy_bullet_hell::{
+    block, camera, common::*, config, gamepad, keyboard, mouse, overlay, player, shooting, tile, ui,
+};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 
@@ -43,19 +45,22 @@ fn main() {
                 shooting::setup,
                 tile::setup,
                 ui::setup,
+                config::setup,
             )
                 .chain(),
         )
         .add_systems(
             Update,
             (
+                keyboard::update_system,
+                mouse::update_system,
                 gamepad::update_system,
                 player::update_system,
                 player::collider_system,
                 block::update_system,
                 shooting::new_shot_system,
                 shooting::update_system,
-                shooting::collider_system,
+                shooting::collider_system.run_if(on_event::<CollisionStarted>()),
                 overlay::fps_update_system,
                 camera::update_system,
                 ui::update_system,

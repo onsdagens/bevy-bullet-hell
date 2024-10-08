@@ -7,7 +7,7 @@ use bevy::{
 use bevy_inspector_egui::prelude::*;
 // use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 
-use crate::common::*;
+use crate::{common::*, layers::CollisionLayer};
 
 #[derive(Component)]
 pub struct PlayerComponent;
@@ -74,6 +74,8 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         PlayerComponent,
         RigidBody::Dynamic,
         Collider::rectangle(10.0, 10.0),
+        // this is a player and may interact with enemies
+        CollisionLayers::new(CollisionLayer::Player, CollisionLayer::Enemy),
         Sensor,
         SpriteBundle {
             texture: asset_server.load("sprites/cross.png"),
