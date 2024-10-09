@@ -3,11 +3,13 @@
     "NPNG",
     "Roguelite",
     "Tilemap",
+    "consts",
     "despawn",
     "egui",
     "gamepad",
     "gamepads",
     "lazer",
-    "replayability"
+    "replayability",
+    "segs"
   ]
 }
