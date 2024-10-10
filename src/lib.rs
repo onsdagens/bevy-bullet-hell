@@ -1,8 +1,12 @@
 pub mod block;
 pub mod camera;
 pub mod common;
+pub mod config;
 pub mod gamepad;
 pub mod hud;
+pub mod keyboard;
+pub mod layers;
+pub mod mouse;
 pub mod overlay;
 pub mod player;
 pub mod selector;

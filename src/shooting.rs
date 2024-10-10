@@ -1,3 +1,4 @@
+use crate::layers::CollisionLayer;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
@@ -20,7 +21,6 @@ pub struct ShootingResource {
     shot_image: Handle<Image>,
     _bomb_image: Handle<Image>,
 }
-
 pub fn new_shot_system(
     mut commands: Commands,
     shooting_resource: Res<ShootingResource>,
@@ -32,6 +32,8 @@ pub fn new_shot_system(
         debug!("shot_event received");
         debug!("speed {:?} {}", speed, speed.normalize());
         commands.spawn((
+            //this is a player bullet and may interact with enemies
+            CollisionLayers::new(CollisionLayer::PlayerBullet, CollisionLayer::Enemy),
             ShotComponent(speed.normalize()),
             SpriteBundle {
                 texture: shooting_resource.shot_image.clone(),
@@ -72,13 +74,19 @@ pub fn collider_system(
     mut collision_query: Query<(Entity, &CollidingEntities), With<ShotComponent>>,
 ) {
     let player_entity = player_query.single();
-
     for (shot_entity, colliding_entities) in &mut collision_query {
         for entity in colliding_entities.iter() {
             if *entity != player_entity {
-                trace!("hit target");
-                commands.entity(shot_entity).despawn();
-                commands.entity(*entity).despawn();
+                let entity = *entity;
+                let shot_entity = shot_entity;
+                // this ensures the same baddy doesnt swallow two shots
+                commands.add(move |world: &mut World| {
+                    // despawn the entity and shot only if the entity actually exists
+                    if let Some(entity) = world.get_entity_mut(entity) {
+                        entity.despawn();
+                        world.despawn(shot_entity);
+                    }
+                });
             }
         }
     }
