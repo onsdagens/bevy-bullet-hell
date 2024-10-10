@@ -1,6 +1,8 @@
 use avian2d::{math::*, prelude::*};
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, window::WindowResolution};
 use bevy_bullet_hell::{
+  hud,
+  selector,
     block, camera,
     common::*,
     config::{self, ConfigResource},
@@ -48,6 +50,9 @@ fn main() {
                 shooting::setup,
                 tile::setup,
                 ui::setup,
+                weapon::setup,
+                selector::setup,
+                hud::setup,
                 config::setup,
             )
                 .chain(),
@@ -76,6 +81,7 @@ fn main() {
                 overlay::fps_update_system,
                 camera::update_system,
                 ui::update_system,
+                selector::update_system,
             )
                 .chain(),
         )

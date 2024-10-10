@@ -3,33 +3,13 @@ use bevy::{
     prelude::*,
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
+
 use std::f32::consts::{PI, TAU};
 
-use bevy_bullet_hell::common::*;
-
-struct Weapon {
-    image: Handle<Image>,
-}
-
-#[derive(Resource, Default)]
-pub struct WeaponsResource {
-    weapons: Vec<Weapon>,
-}
-
-pub fn weapon_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let mut weapons = vec![];
-
-    for _ in 0..4 {
-        weapons.push(Weapon {
-            image: asset_server.load("sprites/cross.png"),
-        })
-    }
-
-    commands.insert_resource(WeaponsResource { weapons });
-}
+use crate::{common::*, player::PlayerResource, weapon::WeaponsResource};
 
 #[derive(Component)]
-pub struct Selector(u8);
+pub struct Selector;
 
 #[derive(Component)]
 pub struct SelectorIcon;
@@ -42,17 +22,20 @@ pub struct SelectorText(Hand);
 
 #[derive(Resource, Default)]
 pub struct SelectorResource {
-    weapons: Vec<usize>, // index to the weapon
+    weapons: Vec<u8>, // index to the weapon
     current_left: Option<u8>,
     current_right: Option<u8>,
 }
 
-pub fn selector_setup(mut commands: Commands) {
+// setup system
+// for now hard coded to 4 weapons on the selection wheel
+// wheel starts empty
+pub fn setup(mut commands: Commands) {
+    let weapons = vec![0u8, 1, 2, 3];
     commands.insert_resource({
-        let weapons = vec![0, 1, 2, 3];
         SelectorResource {
-            weapons: vec![0, 1, 2, 3],
-            current_left: Some(weapons[0]),
+            weapons,
+            current_left: None,
             current_right: None,
         }
     });
@@ -65,6 +48,7 @@ enum Hand {
 }
 
 fn selector_spawn(
+    pos: Vec2,
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<ColorMaterial>,
@@ -97,15 +81,15 @@ fn selector_spawn(
         .into();
 
         let angle = (i as f32) * TAU / nr_weapons;
-        let weapon = &weapons_r.weapons[*weapons];
+        let weapon = &weapons_r.weapons[*weapons as usize];
 
         // TODO, here we might want to use a component with children instead
         commands.spawn((
-            Selector(i as u8),
+            Selector,
             MaterialMesh2dBundle {
                 mesh: shape,
                 material: materials.add(color),
-                transform: Transform::from_xyz(0.0, 0.0, 10.0)
+                transform: Transform::from_xyz(pos.x, pos.y, 100.0)
                     .with_rotation(Quat::from_axis_angle(Vec3::Z, angle)),
                 ..default()
             },
@@ -116,7 +100,12 @@ fn selector_spawn(
             SpriteBundle {
                 texture: weapon.image.clone(),
                 transform: Transform::from_translation(
-                    (50.0 * angle.sin(), 50.0 * angle.cos(), 12.0).into(),
+                    (
+                        50.0 * angle.sin() + pos.x,
+                        50.0 * angle.cos() + pos.y,
+                        102.0,
+                    )
+                        .into(),
                 ),
                 ..default()
             },
@@ -134,41 +123,41 @@ fn selector_spawn(
             material: materials.add(
                 color, //.with_alpha(0.1)
             ),
-            transform: Transform::from_xyz(0.0, 0.0, 11.0),
+            transform: Transform::from_xyz(pos.x, pos.y, 101.0),
             visibility: Visibility::Hidden,
             ..default()
         },
     ));
+
     commands.spawn((
         SelectorText(hand),
-        TextBundle::from_section(
-            match hand {
-                Hand::Left => "Left Weapon/Ability",
-                Hand::Right => "Right Weapon/Ability",
-            },
-            TextStyle {
-                font_size: SELECTOR_FONT_SIZE,
-                color: SELECTOR_TEXT_COLOR.into(),
-                ..default()
-            },
-        )
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            top: Val::Px(5.0),
-            left: Val::Px(15.0),
-            align_self: AlignSelf::Center,
+        Text2dBundle {
+            text: Text::from_section(
+                match hand {
+                    Hand::Left => "Left",
+                    Hand::Right => "Right",
+                },
+                TextStyle {
+                    font_size: SELECTOR_FONT_SIZE,
+                    color: SELECTOR_TEXT_COLOR.into(),
+                    ..default()
+                },
+            )
+            .with_justify(JustifyText::Center),
+            transform: Transform::from_xyz(pos.x, pos.y, 103.0),
             ..default()
-        }),
+        },
     ));
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn selector_system(
+pub fn update_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut selector_r: ResMut<SelectorResource>,
     weapons_r: Res<WeaponsResource>,
+    player_r: Res<PlayerResource>,
     selector_q: Query<Entity, With<Selector>>,
     selector_icon_q: Query<Entity, With<SelectorIcon>>,
     selector_text_q: Query<(Entity, &SelectorText), With<SelectorText>>,
@@ -203,6 +192,7 @@ pub fn selector_system(
             if let Some(hand) = spawn {
                 debug!("spawn {:?}", hand);
                 selector_spawn(
+                    player_r.player_pos,
                     &mut commands,
                     &mut meshes,
                     &mut materials,
@@ -259,7 +249,7 @@ pub fn selector_system(
 
             // None if no weapon is selected
             let selected = if x != 0.0 || y != 0.0 {
-                let seg = segment(x, y, selector_r.weapons.len());
+                let seg = segment(x, y, selector_r.weapons.len() as u8);
                 debug!("in segment {}", seg);
                 Some(seg)
             } else {
@@ -280,6 +270,7 @@ pub fn selector_system(
                 None => Visibility::Hidden,
             };
 
+            // despawn selector (either Left or Right)
             if let Some(hand) = despawn {
                 debug!("despawn {:?}", hand);
                 // update selector only if some selection is made on release
@@ -305,7 +296,7 @@ pub fn selector_system(
 }
 
 #[inline(always)]
-fn segment(x: f32, y: f32, nr_segs: usize) -> u8 {
+fn segment(x: f32, y: f32, nr_segs: u8) -> u8 {
     let angle = 1.5 * PI + y.atan2(x);
 
     let segment = nr_segs as f32 * angle / TAU;
@@ -320,23 +311,11 @@ fn segment(x: f32, y: f32, nr_segs: usize) -> u8 {
     segment_round as u8 % nr_segs as u8
 }
 
-fn setup(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
-}
-
-fn main() {
-    let mut app = App::new();
-    app.add_plugins(DefaultPlugins)
-        .add_systems(Startup, (setup, weapon_setup, selector_setup).chain())
-        .add_systems(Update, selector_system);
-    app.run();
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
 
-    fn test_segment(s: &str, x: f32, y: f32, nr_segs: usize, expected: u8) {
+    fn test_segment(s: &str, x: f32, y: f32, nr_segs: u8, expected: u8) {
         let seg = segment(x, y, nr_segs);
         println!("{}, segment {}\n", s, seg);
         assert_eq!(seg, expected);
